@@ -17,7 +17,6 @@ using System.Data;
 using Migrator.Framework;
 using Migrator.Framework.SchemaBuilder;
 using ForeignKeyConstraint = Migrator.Framework.ForeignKeyConstraint;
-using Migrator.Framework.Loggers;
 
 namespace Migrator.Providers
 {
@@ -33,15 +32,16 @@ namespace Migrator.Providers
 		private List<long> _appliedMigrations;
 
 		protected readonly string _connectionString;
+		protected readonly int _commandTimeout;
 		protected Dialect _dialect;
 
 		private readonly ForeignKeyConstraintMapper constraintMapper = new ForeignKeyConstraintMapper();
 
-		protected TransformationProvider(Dialect dialect, string connectionString)
+		protected TransformationProvider(Dialect dialect, string connectionString, int commandTimeout)
 		{
 			_dialect = dialect;
 			_connectionString = connectionString;
-			_logger = new Logger(false);
+			_commandTimeout = commandTimeout;
 		}
 
 		/// <summary>
@@ -157,56 +157,56 @@ namespace Migrator.Providers
 		/// </example>
 		public virtual void AddTable(string name, params Column[] columns)
 		{
-            // Most databases don't have the concept of a storage engine, so default is to not use it.
-            AddTable(name, null, columns);
+			// Most databases don't have the concept of a storage engine, so default is to not use it.
+			AddTable(name, null, columns);
 		}
 
-        /// <summary>
-        /// Add a new table
-        /// </summary>
-        /// <param name="name">Table name</param>
-        /// <param name="columns">Columns</param>
-        /// <param name="engine">the database storage engine to use</param>
-        /// <example>
-        /// Adds the Test table with two columns:
-        /// <code>
-        /// Database.AddTable("Test", "INNODB",
-        ///	                  new Column("Id", typeof(int), ColumnProperty.PrimaryKey),
-        ///	                  new Column("Title", typeof(string), 100)
-        ///	                 );
-        /// </code>
-        /// </example>
-        public virtual void AddTable(string name, string engine, params Column[] columns)
-        {
+		/// <summary>
+		/// Add a new table
+		/// </summary>
+		/// <param name="name">Table name</param>
+		/// <param name="columns">Columns</param>
+		/// <param name="engine">the database storage engine to use</param>
+		/// <example>
+		/// Adds the Test table with two columns:
+		/// <code>
+		/// Database.AddTable("Test", "INNODB",
+		///	                  new Column("Id", typeof(int), ColumnProperty.PrimaryKey),
+		///	                  new Column("Title", typeof(string), 100)
+		///	                 );
+		/// </code>
+		/// </example>
+		public virtual void AddTable(string name, string engine, params Column[] columns)
+		{
 
-            if (TableExists(name))
-            {
-                Logger.Warn("Table {0} already exists", name);
-                return;
-            }
+			if (TableExists(name))
+			{
+				Logger.Warn("Table {0} already exists", name);
+				return;
+			}
 
-            List<string> pks = GetPrimaryKeys(columns);
-            bool compoundPrimaryKey = pks.Count > 1;
+			List<string> pks = GetPrimaryKeys(columns);
+			bool compoundPrimaryKey = pks.Count > 1;
 
-            List<ColumnPropertiesMapper> columnProviders = new List<ColumnPropertiesMapper>(columns.Length);
-            foreach (Column column in columns)
-            {
-                // Remove the primary key notation if compound primary key because we'll add it back later
-                if (compoundPrimaryKey && column.IsPrimaryKey)
-                    column.ColumnProperty = ColumnProperty.Unsigned | ColumnProperty.NotNull;
+			List<ColumnPropertiesMapper> columnProviders = new List<ColumnPropertiesMapper>(columns.Length);
+			foreach (Column column in columns)
+			{
+				// Remove the primary key notation if compound primary key because we'll add it back later
+				if (compoundPrimaryKey && column.IsPrimaryKey)
+					column.ColumnProperty = ColumnProperty.Unsigned | ColumnProperty.NotNull;
 
-                ColumnPropertiesMapper mapper = _dialect.GetAndMapColumnProperties(column);
-                columnProviders.Add(mapper);
-            }
+				ColumnPropertiesMapper mapper = _dialect.GetAndMapColumnProperties(column);
+				columnProviders.Add(mapper);
+			}
 
-            string columnsAndIndexes = JoinColumnsAndIndexes(columnProviders);
-            AddTable(name, engine, columnsAndIndexes);
+			string columnsAndIndexes = JoinColumnsAndIndexes(columnProviders);
+			AddTable(name, engine, columnsAndIndexes);
 
-            if (compoundPrimaryKey)
-            {
-                AddPrimaryKey(String.Format("PK_{0}", name), name, pks.ToArray());
-            }
-        }
+			if (compoundPrimaryKey)
+			{
+				AddPrimaryKey(String.Format("PK_{0}", name), name, pks.ToArray());
+			}
+		}
 
 		public List<string> GetPrimaryKeys(IEnumerable<Column> columns)
 		{
@@ -313,20 +313,21 @@ namespace Migrator.Providers
 			{
 				string indexSql = column.IndexSql;
 				if (indexSql != null)
+				{
 					indexes.Add(indexSql);
+				}
 			}
 
-			if (indexes.Count == 0)
-				return null;
-
-			return String.Join(", ", indexes.ToArray());
+			return indexes.Count == 0 ? null : String.Join(", ", indexes.ToArray());
 		}
 
 		protected virtual string JoinColumns(IEnumerable<ColumnPropertiesMapper> columns)
 		{
 			List<string> columnStrings = new List<string>();
 			foreach (ColumnPropertiesMapper column in columns)
+			{
 				columnStrings.Add(column.ColumnSql);
+			}
 			return String.Join(", ", columnStrings.ToArray());
 		}
 
@@ -340,7 +341,7 @@ namespace Migrator.Providers
 		/// <param name="property">Properties of the column, see <see cref="ColumnProperty">ColumnProperty</see>,</param>
 		/// <param name="defaultValue">Default value</param>
 		public virtual void AddColumn(string table, string column, DbType type, int size, ColumnProperty property,
-                                      object defaultValue)
+																			object defaultValue)
 		{
 			if (ColumnExists(table, column))
 			{
@@ -374,20 +375,20 @@ namespace Migrator.Providers
 			AddColumn(table, column, type, size, ColumnProperty.Null, null);
 		}
 
-        public void AddColumn(string table, string column, DbType type, object defaultValue)
-        {
-            if (ColumnExists(table, column))
-            {
-                Logger.Warn("Column {0}.{1} already exists", table, column);
-                return;
-            }
+		public void AddColumn(string table, string column, DbType type, object defaultValue)
+		{
+			if (ColumnExists(table, column))
+			{
+				Logger.Warn("Column {0}.{1} already exists", table, column);
+				return;
+			}
 
-            ColumnPropertiesMapper mapper =
-                _dialect.GetAndMapColumnProperties(new Column(column, type, defaultValue));
+			ColumnPropertiesMapper mapper =
+					_dialect.GetAndMapColumnProperties(new Column(column, type, defaultValue));
 
-            AddColumn(table, mapper.ColumnSql);
-            
-        }
+			AddColumn(table, mapper.ColumnSql);
+
+		}
 
 		/// <summary>
 		/// <see cref="TransformationProvider.AddColumn(string, string, DbType, int, ColumnProperty, object)">
@@ -424,7 +425,7 @@ namespace Migrator.Providers
 			}
 			ExecuteNonQuery(
 				String.Format("ALTER TABLE {0} ADD CONSTRAINT {1} PRIMARY KEY ({2}) ", table, name,
-							  String.Join(",", columns)));
+								String.Join(",", columns)));
 		}
 
 		public virtual void AddUniqueConstraint(string name, string table, params string[] columns)
@@ -457,10 +458,9 @@ namespace Migrator.Providers
 
 		/// <summary>
 		/// Guesses the name of the foreign key and add it
-		/// </see>
 		/// </summary>
 		public virtual void GenerateForeignKey(string primaryTable, string[] primaryColumns, string refTable,
-                                               string[] refColumns)
+																							 string[] refColumns)
 		{
 			AddForeignKey("FK_" + primaryTable + "_" + refTable, primaryTable, primaryColumns, refTable, refColumns);
 		}
@@ -469,21 +469,20 @@ namespace Migrator.Providers
 		/// Guesses the name of the foreign key and add it
 		/// </summary>
 		public virtual void GenerateForeignKey(string primaryTable, string primaryColumn, string refTable,
-                                               string refColumn, ForeignKeyConstraint constraint)
+																							 string refColumn, ForeignKeyConstraint constraint)
 		{
 			AddForeignKey("FK_" + primaryTable + "_" + refTable, primaryTable, primaryColumn, refTable, refColumn,
-						  constraint);
+							constraint);
 		}
 
 		/// <summary>
 		/// Guesses the name of the foreign key and add it
-		/// </see>
 		/// </summary>
 		public virtual void GenerateForeignKey(string primaryTable, string[] primaryColumns, string refTable,
-                                               string[] refColumns, ForeignKeyConstraint constraint)
+																							 string[] refColumns, ForeignKeyConstraint constraint)
 		{
 			AddForeignKey("FK_" + primaryTable + "_" + refTable, primaryTable, primaryColumns, refTable, refColumns,
-						  constraint);
+							constraint);
 		}
 
 		/// <summary>
@@ -496,9 +495,9 @@ namespace Migrator.Providers
 		/// <param name="refTable">Foreign table name</param>
 		/// <param name="refColumn">Foreign column name</param>
 		public virtual void AddForeignKey(string name, string primaryTable, string primaryColumn, string refTable,
-                                          string refColumn)
+																					string refColumn)
 		{
-			AddForeignKey(name, primaryTable, new string[] { primaryColumn }, refTable, new string[] { refColumn });
+			AddForeignKey(name, primaryTable, new[] { primaryColumn }, refTable, new[] { refColumn });
 		}
 
 		/// <summary>
@@ -513,12 +512,12 @@ namespace Migrator.Providers
 
 		public virtual void AddForeignKey(string name, string primaryTable, string primaryColumn, string refTable, string refColumn, ForeignKeyConstraint constraint)
 		{
-			AddForeignKey(name, primaryTable, new string[] { primaryColumn }, refTable, new string[] { refColumn },
-						  constraint);
+			AddForeignKey(name, primaryTable, new[] { primaryColumn }, refTable, new[] { refColumn },
+							constraint);
 		}
 
 		public virtual void AddForeignKey(string name, string primaryTable, string[] primaryColumns, string refTable,
-                                          string[] refColumns, ForeignKeyConstraint constraint)
+																					string[] refColumns, ForeignKeyConstraint constraint)
 		{
 			if (ConstraintExists(primaryTable, name))
 			{
@@ -549,31 +548,33 @@ namespace Migrator.Providers
 
 		public int ExecuteNonQuery(string sql)
 		{
-            Logger.Trace(sql);
-            Logger.ApplyingDBChange(sql);
-            using (IDbCommand cmd = BuildCommand(sql))
-            {
-                try
-                {
-                    return cmd.ExecuteNonQuery();
-                }
-                catch (Exception ex)
-                {
-                    Logger.Warn(ex.Message);
-                    throw;
-                }
-            }		}
+			Logger.Trace(sql);
+			Logger.ApplyingDBChange(sql);
+			using (IDbCommand cmd = BuildCommand(sql))
+			{
+				try
+				{
+					return cmd.ExecuteNonQuery();
+				}
+				catch (Exception ex)
+				{
+					Logger.Warn(ex.Message);
+					throw;
+				}
+			}
+		}
 
 		private IDbCommand BuildCommand(string sql)
 		{
-		    IDbCommand cmd = _connection.CreateCommand();
-            cmd.CommandText = sql;
-            cmd.CommandType = CommandType.Text;
-            if (_transaction != null)
-            {
-                cmd.Transaction = _transaction;
-            }
-            return cmd;
+			IDbCommand cmd = _connection.CreateCommand();
+			cmd.CommandText = sql;
+			cmd.CommandType = CommandType.Text;
+			cmd.CommandTimeout = _commandTimeout;
+			if (_transaction != null)
+			{
+				cmd.Transaction = _transaction;
+			}
+			return cmd;
 		}
 
 		/// <summary>
@@ -583,35 +584,37 @@ namespace Migrator.Providers
 		/// <returns>A data iterator, <see cref="System.Data.IDataReader">IDataReader</see>.</returns>
 		public IDataReader ExecuteQuery(string sql)
 		{
-            Logger.Trace(sql);
-            using (IDbCommand cmd = BuildCommand(sql))
-            {
-                try
-                {
-                    return cmd.ExecuteReader();
-                }
-                catch
-                {
-                    Logger.Warn("query failed: {0}", cmd.CommandText);
-                    throw;
-                }
-            }		}
+			Logger.Trace(sql);
+			using (IDbCommand cmd = BuildCommand(sql))
+			{
+				try
+				{
+					return cmd.ExecuteReader();
+				}
+				catch
+				{
+					Logger.Warn("query failed: {0}", cmd.CommandText);
+					throw;
+				}
+			}
+		}
 
 		public object ExecuteScalar(string sql)
 		{
-            Logger.Trace(sql);
-            using (IDbCommand cmd = BuildCommand(sql))
-            {
-                try
-                {
-                    return cmd.ExecuteScalar();
-                }
-                catch
-                {
-                    Logger.Warn("Query failed: {0}", cmd.CommandText);
-                    throw;
-                }
-            }		}
+			Logger.Trace(sql);
+			using (IDbCommand cmd = BuildCommand(sql))
+			{
+				try
+				{
+					return cmd.ExecuteScalar();
+				}
+				catch
+				{
+					Logger.Warn("Query failed: {0}", cmd.CommandText);
+					throw;
+				}
+			}
+		}
 
 		public IDataReader Select(string what, string from)
 		{
@@ -640,9 +643,9 @@ namespace Migrator.Providers
 
 		public virtual int Update(string table, string[] columns, string[] values, string where)
 		{
-            string namesAndValues = JoinColumnsAndValues(columns, values);
+			string namesAndValues = JoinColumnsAndValues(columns, values);
 
-		    string query = "UPDATE {0} SET {1}";
+			string query = "UPDATE {0} SET {1}";
 			if (!String.IsNullOrEmpty(where))
 			{
 				query += " WHERE " + where;
@@ -651,27 +654,24 @@ namespace Migrator.Providers
 			return ExecuteNonQuery(String.Format(query, table, namesAndValues));
 		}
 
-	    public virtual int Insert(string table, string[] columns, string[] values)
+		public virtual int Insert(string table, string[] columns, string[] values)
 		{
 			return ExecuteNonQuery(String.Format("INSERT INTO {0} ({1}) VALUES ({2})", table, String.Join(", ", columns), String.Join(", ", QuoteValues(values))));
 		}
 
-        public virtual int Delete(string table)
-        {
-            return Delete(table, (string[])null, (string[]) null);
-        }
+		public virtual int Delete(string table)
+		{
+			return Delete(table, null, (string[]) null);
+		}
 
-        public virtual int Delete(string table, string[] columns, string[] values)
-        {
-            if (null == columns || null == values)
-            {
-                return ExecuteNonQuery(String.Format("DELETE FROM {0}", table));
-            }
-            else
-            {
-                return ExecuteNonQuery(String.Format("DELETE FROM {0} WHERE ({1})", table, JoinColumnsAndValues(columns, values)));
-            }
-        }
+		public virtual int Delete(string table, string[] columns, string[] values)
+		{
+			if (null == columns || null == values)
+			{
+				return ExecuteNonQuery(String.Format("DELETE FROM {0}", table));
+			}
+			return ExecuteNonQuery(String.Format("DELETE FROM {0} WHERE ({1})", table, JoinColumnsAndValues(columns, values)));
+		}
 
 		public virtual int Delete(string table, string wherecolumn, string wherevalue)
 		{
@@ -683,19 +683,21 @@ namespace Migrator.Providers
 		/// </summary>
 		public void BeginTransaction()
 		{
-			if (_transaction == null && _connection != null)
+			if (_transaction != null || _connection == null)
 			{
-				EnsureHasConnection();
-				_transaction = _connection.BeginTransaction(IsolationLevel.ReadCommitted);
+				return;
 			}
+			EnsureHasConnection();
+			_transaction = _connection.BeginTransaction(IsolationLevel.ReadCommitted);
 		}
 
 		protected void EnsureHasConnection()
 		{
-			if (_connection.State != ConnectionState.Open)
+			if (_connection.State == ConnectionState.Open)
 			{
-				_connection.Open();
+				return;
 			}
+			_connection.Open();
 		}
 
 		/// <summary>
@@ -736,42 +738,46 @@ namespace Migrator.Providers
 			_transaction = null;
 		}
 
-        /// <summary>
-        /// The list of Migrations currently applied to the database.
-        /// </summary>
+		/// <summary>
+		/// The list of Migrations currently applied to the database.
+		/// </summary>
 		public List<long> AppliedMigrations
 		{
 			get
 			{
-				if(_appliedMigrations == null)
+				if (_appliedMigrations != null)
 				{
-					_appliedMigrations = new List<long>();
-					CreateSchemaInfoTable();
-					using(IDataReader reader = Select("version","SchemaInfo")){
-						while(reader.Read()){
-                            _appliedMigrations.Add(Convert.ToInt64(reader.GetValue(0)));
-						}
+					return _appliedMigrations;
+				}
+				
+				_appliedMigrations = new List<long>();
+				CreateSchemaInfoTable();
+				using (IDataReader reader = Select("version", "SchemaInfo"))
+				{
+					while (reader.Read())
+					{
+						_appliedMigrations.Add(Convert.ToInt64(reader.GetValue(0)));
 					}
 				}
 				return _appliedMigrations;
 			}
 		}
-		
+
 		/// <summary>
-        /// Marks a Migration version number as having been applied
-        /// </summary>
-        /// <param name="version">The version number of the migration that was applied</param>
+		/// Marks a Migration version number as having been applied
+		/// </summary>
+		/// <param name="version">The version number of the migration that was applied</param>
 		public void MigrationApplied(long version)
 		{
 			CreateSchemaInfoTable();
-			Insert("SchemaInfo",new string[]{"version"},new string[]{version.ToString()});
+			Insert("SchemaInfo", new[] { "version" }, new[] { version.ToString() });
 			_appliedMigrations.Add(version);
 		}
-		
-        /// <summary>
-        /// Marks a Migration version number as having been rolled back from the database
-        /// </summary>
-        /// <param name="version">The version number of the migration that was removed</param>
+
+		/// <summary>
+		/// Marks a Migration version number as having been rolled back from the database
+		/// </summary>
+		/// <param name="version">The version number of the migration that was removed</param>
 		public void MigrationUnApplied(long version)
 		{
 			CreateSchemaInfoTable();
@@ -782,10 +788,11 @@ namespace Migrator.Providers
 		protected void CreateSchemaInfoTable()
 		{
 			EnsureHasConnection();
-			if (!TableExists("SchemaInfo"))
+			if (TableExists("SchemaInfo"))
 			{
-				AddTable("SchemaInfo", new Column("Version", DbType.Int64, ColumnProperty.PrimaryKey));
+				return;
 			}
+			AddTable("SchemaInfo", new Column("Version", DbType.Int64, ColumnProperty.PrimaryKey));
 		}
 
 		public void AddColumn(string table, Column column)
@@ -814,40 +821,34 @@ namespace Migrator.Providers
 				expr.Create(this);
 		}
 
-        public virtual string QuoteValues(string values)
-        {
-            return QuoteValues(new string[] {values})[0];
-        }
+		public virtual string QuoteValues(string values)
+		{
+			return QuoteValues(new[] { values })[0];
+		}
 
-        public virtual string[] QuoteValues(string[] values)
-        {
-            return Array.ConvertAll<string, string>(values,
-				      delegate(string val) {
-				        if (null == val)
-				          return "null";
-				        else
-				          return String.Format("'{0}'", val.Replace("'", "''")); 
-				  });
-        }
+		public virtual string[] QuoteValues(string[] values)
+		{
+			return Array.ConvertAll(values, val => val == null ? "null" : String.Format("'{0}'", val.Replace("'", "''")));
+		}
 
-        public string JoinColumnsAndValues(string[] columns, string[] values)
-        {
-            string[] quotedValues = QuoteValues(values);
-            string[] namesAndValues = new string[columns.Length];
-            for (int i = 0; i < columns.Length; i++)
-            {
-                namesAndValues[i] = String.Format("{0}={1}", columns[i], quotedValues[i]);
-            }
+		public string JoinColumnsAndValues(string[] columns, string[] values)
+		{
+			string[] quotedValues = QuoteValues(values);
+			string[] namesAndValues = new string[columns.Length];
+			for (int i = 0; i < columns.Length; i++)
+			{
+				namesAndValues[i] = String.Format("{0}={1}", columns[i], quotedValues[i]);
+			}
 
-            return String.Join(", ", namesAndValues);
-        }
+			return String.Join(", ", namesAndValues);
+		}
 
-        public void Dispose()
-        {
-            if (_connection != null && _connection.State == ConnectionState.Open)
-            {
-                _connection.Close();
-            }
-        }
+		public void Dispose()
+		{
+			if (_connection != null && _connection.State == ConnectionState.Open)
+			{
+				_connection.Close();
+			}
+		}
 	}
 }

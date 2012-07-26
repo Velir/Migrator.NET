@@ -16,20 +16,22 @@ using NUnit.Framework;
 
 namespace Migrator.Tests.Providers
 {
-    [TestFixture, Category("SqlServer2005")]
-    public class SqlServer2005TransformationProviderTest : TransformationProviderConstraintBase
-    {
-        [SetUp]
-        public void SetUp()
-        {
-            string constr = ConfigurationManager.AppSettings["SqlServer2005ConnectionString"];
-            if (constr == null)
-                throw new ArgumentNullException("SqlServer2005ConnectionString", "No config file");
+	[TestFixture, Category("SqlServer2005")]
+	public class SqlServer2005TransformationProviderTest : TransformationProviderConstraintBase
+	{
+		[SetUp]
+		public void SetUp()
+		{
+			string constr = ConfigurationManager.AppSettings["SqlServer2005ConnectionString"];
+			if (constr == null)
+			{
+				throw new ArgumentNullException("SqlServer2005ConnectionString", "No config file");
+			}
 
-            _provider = new SqlServerTransformationProvider(new SqlServer2005Dialect(), constr);
-            _provider.BeginTransaction();
+			_provider = new SqlServerTransformationProvider(new SqlServer2005Dialect(), constr, DEFAULT_TEST_TIMEOUT);
+			_provider.BeginTransaction();
 
-            AddDefaultTable();
-        }
-    }
+			AddDefaultTable();
+		}
+	}
 }

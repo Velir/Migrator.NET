@@ -6,7 +6,7 @@
     <property name="defines" value="DOTNET2" if="${property::exists('dotnet')}" />
     <property name="defines" value="MONO2" if="${property::exists('mono')}" />
 
-    <property name="version" value="0.8"/>
+    <property name="version" value="0.10"/>
 
     <property name="debug" value="true" />
 

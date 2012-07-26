@@ -61,10 +61,6 @@
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="log4net">
-      <HintPath>..\..\lib\log4net.dll</HintPath>
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
     <Reference Include="Mono.Security">
       <HintPath>..\..\lib\Npgsql\net-2.0\Mono.Security.dll</HintPath>
       <SpecificVersion>False</SpecificVersion>

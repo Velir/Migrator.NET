@@ -11,7 +11,7 @@
 
 using System;
 
-namespace Migrator.MigratorConsole
+namespace Migrator.Console
 {
 	/// <summary>
 	/// Console application boostrap class.
@@ -21,7 +21,7 @@ namespace Migrator.MigratorConsole
 		[STAThread]
 		public static int Main(string[] argv)
 		{
-			MigratorConsole con = new MigratorConsole(argv);
+			Console.MigratorConsole con = new Console.MigratorConsole(argv);
 			return con.Run();
 		}
 	}

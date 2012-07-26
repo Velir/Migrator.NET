@@ -19,62 +19,62 @@ using NUnit.Framework;
 
 namespace Migrator.Tests.Providers
 {
-    [TestFixture, Category("SqlServer")]
-    public class SqlServerTransformationProviderTest : TransformationProviderConstraintBase
-    {
-        [SetUp]
-        public void SetUp()
-        {
-            string constr = ConfigurationManager.AppSettings["SqlServerConnectionString"];
-            if (constr == null)
-                throw new ArgumentNullException("SqlServerConnectionString", "No config file");
+	[TestFixture, Category("SqlServer")]
+	public class SqlServerTransformationProviderTest : TransformationProviderConstraintBase
+	{
+		[SetUp]
+		public void SetUp()
+		{
+			string constr = ConfigurationManager.AppSettings["SqlServerConnectionString"];
+			if (constr == null)
+				throw new ArgumentNullException("SqlServerConnectionString", "No config file");
 
-            _provider = new SqlServerTransformationProvider(new SqlServerDialect(), constr);
-            _provider.BeginTransaction();
+			_provider = new SqlServerTransformationProvider(new SqlServerDialect(), constr, DEFAULT_TEST_TIMEOUT);
+			_provider.BeginTransaction();
 
-            AddDefaultTable();
-        }
+			AddDefaultTable();
+		}
 
-        [Test]
-        public void QuoteCreatesProperFormat()
-        {
-            Dialect dialect = new SqlServerDialect();
-            Assert.AreEqual("[foo]", dialect.Quote("foo"));
-        }
+		[Test]
+		public void QuoteCreatesProperFormat()
+		{
+			Dialect dialect = new SqlServerDialect();
+			Assert.AreEqual("[foo]", dialect.Quote("foo"));
+		}
 
-        [Test]
-        public void InstanceForProvider()
-        {
-            ITransformationProvider localProv = _provider["sqlserver"];
-            Assert.IsTrue(localProv is SqlServerTransformationProvider);
+		[Test]
+		public void InstanceForProvider()
+		{
+			ITransformationProvider localProv = _provider["sqlserver"];
+			Assert.IsTrue(localProv is SqlServerTransformationProvider);
 
-            ITransformationProvider localProv2 = _provider["foo"];
-            Assert.IsTrue(localProv2 is NoOpTransformationProvider);
-        }
-        
-        [Test]
-        public void ByteColumnWillBeCreatedAsBlob()
-        {
-            _provider.AddColumn("TestTwo", "BlobColumn", DbType.Byte);
-            Assert.IsTrue(_provider.ColumnExists("TestTwo", "BlobColumn"));
-        }
+			ITransformationProvider localProv2 = _provider["foo"];
+			Assert.IsTrue(localProv2 is NoOpTransformationProvider);
+		}
 
-        [Test]
-        public void TableExistsShouldWorkWithTableNamesWithBracket()
-        {
-            Assert.IsTrue(_provider.TableExists("[TestTwo]"));            
-        }
+		[Test]
+		public void ByteColumnWillBeCreatedAsBlob()
+		{
+			_provider.AddColumn("TestTwo", "BlobColumn", DbType.Byte);
+			Assert.IsTrue(_provider.ColumnExists("TestTwo", "BlobColumn"));
+		}
 
-        [Test]
-        public void TableExistsShouldWorkWithSchemaNameAndTableName()
-        {
-            Assert.IsTrue(_provider.TableExists("dbo.TestTwo"));
-        }
-        
-        [Test]
-        public void TableExistsShouldWorkWithBracketsAndSchemaNameAndTableName()
-        {
-            Assert.IsTrue(_provider.TableExists("[dbo].[TestTwo]"));
-        }
-    }
+		[Test]
+		public void TableExistsShouldWorkWithTableNamesWithBracket()
+		{
+			Assert.IsTrue(_provider.TableExists("[TestTwo]"));
+		}
+
+		[Test]
+		public void TableExistsShouldWorkWithSchemaNameAndTableName()
+		{
+			Assert.IsTrue(_provider.TableExists("dbo.TestTwo"));
+		}
+
+		[Test]
+		public void TableExistsShouldWorkWithBracketsAndSchemaNameAndTableName()
+		{
+			Assert.IsTrue(_provider.TableExists("[dbo].[TestTwo]"));
+		}
+	}
 }

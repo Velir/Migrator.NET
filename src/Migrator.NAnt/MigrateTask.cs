@@ -25,43 +25,55 @@ namespace Migrator.NAnt
 	/// </summary>
 	/// <example>
 	/// <loadtasks assembly="…/Migrator.NAnt.dll" />
-    /// <target name="migrate" description="Migrate the database" depends="build">
-    ///  <property name="version" value="-1" overwrite="false" />
-    ///  <migrate
-    ///    provider="MySql"
-    ///    connectionstring="Database=MyDB;Data Source=localhost;User Id=;Password=;"
-    ///    migrations="bin/MyProject.dll"
-    ///    to="${version}" />
-    /// </target>
+	/// <target name="migrate" description="Migrate the database" depends="build">
+	///  <property name="version" value="-1" overwrite="false" />
+	///  <migrate
+	///    provider="MySql"
+	///    connectionstring="Database=MyDB;Data Source=localhost;User Id=;Password=;"
+	///    migrations="bin/MyProject.dll"
+	///    to="${version}" />
+	/// </target>
 	/// </example>
+	/// 
+	/// The migrate task may also take an optional integer attribute named <c>commandTimeout</c>.
+	/// The value used here will be the default timeout, in settings, used on all database
+	/// commands.
 	[TaskName("migrate")]
 	public class MigrateTask : Task
 	{
 		private long _to = -1; // To last revision
 		private string _provider;
 		private string _connectionString;
+		private int _commandTimeout = 30; // default to 30 second timeout
 		private FileInfo _migrationsAssembly;
 		private bool _trace;
 		private bool _dryrun;
-        private string _scriptFile;
+		private string _scriptFile;
 
-        private string _directory;
-        private string _language;
+		private string _directory;
+		private string _language;
 
-		[TaskAttribute("provider", Required=true)]
+		[TaskAttribute("provider", Required = true)]
 		public string Provider
 		{
 			set { _provider = value; }
 			get { return _provider; }
 		}
-		
-		[TaskAttribute("connectionstring", Required=true)]
+
+		[TaskAttribute("connectionstring", Required = true)]
 		public string ConnectionString
 		{
 			set { _connectionString = value; }
 			get { return _connectionString; }
 		}
-		
+
+		[TaskAttribute("commandTimeout", Required = false)]
+		public int CommandTimeout
+		{
+			get { return _commandTimeout; }
+			set { _commandTimeout = value; }
+		}
+
 		[TaskAttribute("migrations")]
 		public FileInfo MigrationsAssembly
 		{
@@ -69,39 +81,39 @@ namespace Migrator.NAnt
 			get { return _migrationsAssembly; }
 		}
 
-        /// <summary>
-        /// The paths to the directory that contains your migrations. 
-        /// This will generally just be a single item.
-        /// </summary>
-        [TaskAttribute("directory")]
-        public string Directory
-        {
-            set { _directory = value; }
-            get { return _directory; }
-        }
+		/// <summary>
+		/// The paths to the directory that contains your migrations. 
+		/// This will generally just be a single item.
+		/// </summary>
+		[TaskAttribute("directory")]
+		public string Directory
+		{
+			set { _directory = value; }
+			get { return _directory; }
+		}
 
-        [TaskAttribute("language")]
-        public string Language
-        {
-            set { _language = value; }
-            get { return _language; }
-        }
+		[TaskAttribute("language")]
+		public string Language
+		{
+			set { _language = value; }
+			get { return _language; }
+		}
 
-		
+
 		[TaskAttribute("to")]
 		public long To
 		{
 			set { _to = value; }
 			get { return _to; }
 		}
-		
+
 		[TaskAttribute("trace")]
 		public bool Trace
 		{
 			set { _trace = value; }
 			get { return _trace; }
 		}
-		
+
 		[TaskAttribute("dryrun")]
 		public bool DryRun
 		{
@@ -109,69 +121,69 @@ namespace Migrator.NAnt
 			get { return _dryrun; }
 		}
 
-        /// <summary>
-        /// Gets value indicating whether to script the changes made to the database 
-        /// to the file indicated by <see cref="ScriptFile"/>.
-        /// </summary>
-        /// <value><c>true</c> if the changes should be scripted to a file; otherwise, <c>false</c>.</value>
-        public bool ScriptChanges
-        {
-            get { return !String.IsNullOrEmpty(_scriptFile); }
-        }
-
-        /// <summary>
-        /// Gets or sets the script file that will contain the Sql statements 
-        /// that are executed as part of the migrations.
-        /// </summary>
-        [TaskAttribute("scriptFile")]
-        public string ScriptFile
-        {
-            get { return _scriptFile; }
-            set { _scriptFile = value; }
-        }
-		
-		protected override void ExecuteTask()
+		/// <summary>
+		/// Gets value indicating whether to script the changes made to the database 
+		/// to the file indicated by <see cref="ScriptFile"/>.
+		/// </summary>
+		/// <value><c>true</c> if the changes should be scripted to a file; otherwise, <c>false</c>.</value>
+		public bool ScriptChanges
 		{
-            if (! String.IsNullOrEmpty(Directory))
-            {
-                ScriptEngine engine = new ScriptEngine(Language, null);
-                Execute(engine.Compile(Directory));
-            }
-
-            if (null != MigrationsAssembly)
-            {
-                Assembly asm = Assembly.LoadFrom(MigrationsAssembly.FullName);
-                Execute(asm);
-            }
+			get { return !String.IsNullOrEmpty(_scriptFile); }
 		}
 
-        private void Execute(Assembly asm)
-        {
-            Migrator mig = new Migrator(Provider, ConnectionString, asm, Trace, new TaskLogger(this));
-            mig.DryRun = DryRun;
-            if (ScriptChanges)
-            {
-                using (StreamWriter writer = new StreamWriter(ScriptFile))
-                {
-                    mig.Logger = new SqlScriptFileLogger(mig.Logger, writer);
-                    RunMigration(mig);
-                }
-            }
-            else
-            {
-                RunMigration(mig);
-            }
-        }
+		/// <summary>
+		/// Gets or sets the script file that will contain the Sql statements 
+		/// that are executed as part of the migrations.
+		/// </summary>
+		[TaskAttribute("scriptFile")]
+		public string ScriptFile
+		{
+			get { return _scriptFile; }
+			set { _scriptFile = value; }
+		}
 
-        private void RunMigration(Migrator mig)
-        {
-            if (mig.DryRun)
-                mig.Logger.Log("********** Dry run! Not actually applying changes. **********");
+		protected override void ExecuteTask()
+		{
+			if (!String.IsNullOrEmpty(Directory))
+			{
+				ScriptEngine engine = new ScriptEngine(Language, null);
+				Execute(engine.Compile(Directory));
+			}
 
-            if (_to == -1)
-                mig.MigrateToLastVersion();
-            else
-                mig.MigrateTo(_to);
-        }
+			if (null != MigrationsAssembly)
+			{
+				Assembly asm = Assembly.LoadFrom(MigrationsAssembly.FullName);
+				Execute(asm);
+			}
+		}
+
+		private void Execute(Assembly asm)
+		{
+			Migrator mig = new Migrator(Provider, ConnectionString, CommandTimeout, asm, Trace, new TaskLogger(this));
+			mig.DryRun = DryRun;
+			if (ScriptChanges)
+			{
+				using (StreamWriter writer = new StreamWriter(ScriptFile))
+				{
+					mig.Logger = new SqlScriptFileLogger(mig.Logger, writer);
+					RunMigration(mig);
+				}
+			}
+			else
+			{
+				RunMigration(mig);
+			}
+		}
+
+		private void RunMigration(Migrator mig)
+		{
+			if (mig.DryRun)
+				mig.Logger.Log("********** Dry run! Not actually applying changes. **********");
+
+			if (_to == -1)
+				mig.MigrateToLastVersion();
+			else
+				mig.MigrateTo(_to);
+		}
 	}
 }

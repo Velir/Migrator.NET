@@ -14,9 +14,9 @@ namespace Migrator.Providers.SqlServer
 			RegisterColumnType(DbType.AnsiString, 1073741823, "TEXT");
 		}
 
-		public override ITransformationProvider GetTransformationProvider(Dialect dialect, string connectionString)
+		public override ITransformationProvider GetTransformationProvider(Dialect dialect, string connectionString, int commandTimeout)
 		{
-			return new SqlServerCeTransformationProvider(dialect, connectionString);
+			return new SqlServerCeTransformationProvider(dialect, connectionString, commandTimeout);
 		}
 
 	}

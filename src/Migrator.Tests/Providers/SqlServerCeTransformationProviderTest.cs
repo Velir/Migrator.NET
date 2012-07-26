@@ -18,40 +18,40 @@ using System.IO;
 
 namespace Migrator.Tests.Providers
 {
-    [TestFixture, Category("SqlServerCe")]
-    public class SqlServerCeTransformationProviderTest : TransformationProviderConstraintBase
-    {
-        [SetUp]
-        public void SetUp()
-        {
+	[TestFixture, Category("SqlServerCe")]
+	public class SqlServerCeTransformationProviderTest : TransformationProviderConstraintBase
+	{
+		[SetUp]
+		public void SetUp()
+		{
 
-            string constr = ConfigurationManager.AppSettings["SqlServerCeConnectionString"];
-            if (constr == null)
-                throw new ArgumentNullException("SqlServerCeConnectionString", "No config file");
+			string constr = ConfigurationManager.AppSettings["SqlServerCeConnectionString"];
+			if (constr == null)
+				throw new ArgumentNullException("SqlServerCeConnectionString", "No config file");
 
 			EnsureDatabase(constr);
 
-            _provider = new SqlServerCeTransformationProvider(new SqlServerCeDialect(), constr);
-            _provider.BeginTransaction();
+			_provider = new SqlServerCeTransformationProvider(new SqlServerCeDialect(), constr, DEFAULT_TEST_TIMEOUT);
+			_provider.BeginTransaction();
 
-            AddDefaultTable();
-        }
+			AddDefaultTable();
+		}
 
-        private void EnsureDatabase(string constr)
-        {
-            SqlCeConnection connection = new SqlCeConnection(constr);
-            if (!File.Exists(connection.Database))
-            {
-                SqlCeEngine engine = new SqlCeEngine(constr);
-                engine.CreateDatabase();
-            }
-        }
+		private void EnsureDatabase(string constr)
+		{
+			SqlCeConnection connection = new SqlCeConnection(constr);
+			if (!File.Exists(connection.Database))
+			{
+				SqlCeEngine engine = new SqlCeEngine(constr);
+				engine.CreateDatabase();
+			}
+		}
 
-        // [Test,Ignore("SqlServerCe doesn't support check constraints")]
+		// [Test,Ignore("SqlServerCe doesn't support check constraints")]
 		public override void CanAddCheckConstraint() { }
 
 		// [Test,Ignore("SqlServerCe doesn't support table renaming")]
 		// see: http://www.pocketpcdn.com/articles/articles.php?&atb.set(c_id)=74&atb.set(a_id)=8145&atb.perform(details)=&
 		public override void RenameTableThatExists() { }
-    }
+	}
 }

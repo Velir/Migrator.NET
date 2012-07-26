@@ -19,50 +19,56 @@ using Migrator.Providers;
 
 namespace Migrator
 {
-    /// <summary>
-    /// Handles loading Provider implementations
-    /// </summary>
-    public class ProviderFactory
-    {
-        private static readonly Assembly providerAssembly;
-        private static readonly Dictionary<string, Dialect> dialects = new Dictionary<string, Dialect>();
+	/// <summary>
+	/// Handles loading Provider implementations
+	/// </summary>
+	public class ProviderFactory
+	{
+		private const int DEFAULT_COMMAND_TIMEOUT = 30;
 
-        static ProviderFactory()
-        {
-            providerAssembly = Assembly.GetAssembly(typeof(TransformationProvider));
-            LoadDialects();
-        }
+		private static readonly Assembly providerAssembly;
+		private static readonly Dictionary<string, Dialect> dialects = new Dictionary<string, Dialect>();
 
-        public static ITransformationProvider Create(string providerName, string connectionString)
-        {
-            var dialectInstance = DialectForProvider(providerName);
+		static ProviderFactory()
+		{
+			providerAssembly = Assembly.GetAssembly(typeof(TransformationProvider));
+			LoadDialects();
+		}
 
-            return dialectInstance.NewProviderForDialect( connectionString );
-        }
+		public static ITransformationProvider Create(string providerName, string connectionString)
+		{
+			return Create(providerName, connectionString, DEFAULT_COMMAND_TIMEOUT);
+		}
 
-        public static Dialect DialectForProvider(string providerName)
-        {
-            if (String.IsNullOrEmpty(providerName))
-                return null;
+		public static ITransformationProvider Create(string providerName, string connectionString, int commandTimeout)
+		{
+			var dialectInstance = DialectForProvider(providerName);
+			return dialectInstance.NewProviderForDialect(connectionString, commandTimeout);
+		}
 
-            foreach (string key in dialects.Keys)
-            {
-                if (0 < key.IndexOf(providerName, StringComparison.InvariantCultureIgnoreCase))
-                    return dialects[key];
-            }
-            return null;
-        }
+		public static Dialect DialectForProvider(string providerName)
+		{
+			if (String.IsNullOrEmpty(providerName))
+				return null;
 
-        public static void LoadDialects()
-        {
-            Type dialectType = typeof (Dialect);
-            foreach (Type t in providerAssembly.GetTypes())
-            {
-                if (t.IsSubclassOf(dialectType))
-                {
-                    dialects.Add(t.FullName, (Dialect) Activator.CreateInstance(t, null));
-                }
-            }
-        }
-    }
+			foreach (string key in dialects.Keys)
+			{
+				if (0 < key.IndexOf(providerName, StringComparison.InvariantCultureIgnoreCase))
+					return dialects[key];
+			}
+			return null;
+		}
+
+		public static void LoadDialects()
+		{
+			Type dialectType = typeof(Dialect);
+			foreach (Type t in providerAssembly.GetTypes())
+			{
+				if (t.IsSubclassOf(dialectType))
+				{
+					dialects.Add(t.FullName, (Dialect)Activator.CreateInstance(t, null));
+				}
+			}
+		}
+	}
 }
