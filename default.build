@@ -164,7 +164,6 @@
         <copy todir="${dir.bin}" flatten="true">
             <fileset>
                 <include name="${dir.lib}/NAnt.Core.dll" />
-                <include name="${dir.lib}/log4net.dll" />
                 <include name="${dir.lib}/MySql.Data.dll" />
                 <include name="${dir.lib}/System.Data.SQLite.DLL" />
                 <include name="${dir.lib.postgre}/Npgsql.dll" />
